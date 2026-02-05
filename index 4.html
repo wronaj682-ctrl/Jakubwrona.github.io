@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project: Orion | Jakub Wrona</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=Space+Grotesk:wght@300;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #050508;
+            --accent-glow: #818cf8;
+            --accent-secondary: #c084fc;
+            --star-red: #ff6b6b;
+            --star-blue: #4dabf7;
+            --text-primary: #f8fafc;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: var(--bg-deep);
+            color: var(--text-primary);
+            font-family: 'Outfit', sans-serif;
+            height: 100vh;
+            width: 100vw;
+            user-select: none;
+        }
+
+        h1, h2, h3, .heading-font {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        /* Scene Setup */
+        #scene {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            perspective: 1200px;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Starfield Background */
+        #starfield {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            opacity: 0.6;
+        }
+
+        /* Navigation Zones */
+        .nav-zone {
+            position: fixed;
+            top: 0;
+            height: 100%;
+            width: 50%;
+            z-index: 100;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        .nav-left { left: 0; cursor: w-resize; }
+        .nav-right { right: 0; cursor: e-resize; }
+        .nav-left:hover { background: linear-gradient(90deg, rgba(255,255,255,0.03), transparent); }
+        .nav-right:hover { background: linear-gradient(-90deg, rgba(255,255,255,0.03), transparent); }
+
+        /* Slides */
+        .slide {
+            position: absolute;
+            width: 85%;
+            max-width: 1100px;
+            height: auto;
+            max-height: 90vh;
+            transform-style: preserve-3d;
+            transition: all 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+            opacity: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            pointer-events: none;
+        }
+
+        .slide.active {
+            opacity: 1;
+            transform: translateZ(0) scale(1);
+            filter: blur(0px);
+            z-index: 50;
+            pointer-events: auto;
+        }
+
+        .slide.past {
+            opacity: 0;
+            transform: translateZ(300px) translateY(-100px);
+            filter: blur(20px);
+            z-index: 0;
+        }
+
+        .slide.future {
+            opacity: 0;
+            transform: translateZ(-300px) translateY(100px) scale(0.8);
+            filter: blur(20px);
+            z-index: 0;
+        }
+
+        /* Glass Cards */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.5);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            padding: 3rem;
+            width: 100%;
+            box-shadow: 0 0 40px rgba(0,0,0,0.5);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .glass-panel::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent-glow), transparent);
+        }
+
+        /* --- 3D ORION MODEL CSS --- */
+        .constellation-stage {
+            width: 400px;
+            height: 500px;
+            position: relative;
+            transform-style: preserve-3d;
+            animation: float-rotate 15s infinite linear;
+            margin: 0 auto;
+        }
+
+        @keyframes float-rotate {
+            0% { transform: rotateY(0deg) rotateX(10deg); }
+            50% { transform: rotateY(180deg) rotateX(-10deg); }
+            100% { transform: rotateY(360deg) rotateX(10deg); }
+        }
+
+        .star-point {
+            position: absolute;
+            border-radius: 50%;
+            transform-style: preserve-3d;
+            box-shadow: 0 0 15px currentColor;
+        }
+        
+        /* Star Definitions */
+        .betelgeuse { top: 20%; left: 20%; width: 16px; height: 16px; background: var(--star-red); color: var(--star-red); transform: translateZ(40px); }
+        .bellatrix { top: 25%; left: 80%; width: 12px; height: 12px; background: var(--star-blue); color: var(--star-blue); transform: translateZ(-20px); }
+        .rigel { top: 85%; left: 85%; width: 18px; height: 18px; background: var(--star-blue); color: var(--star-blue); transform: translateZ(50px); }
+        .saiph { top: 90%; left: 15%; width: 10px; height: 10px; background: #fff; color: #fff; transform: translateZ(-30px); }
+        
+        /* The Belt */
+        .alnitak { top: 55%; left: 35%; width: 10px; height: 10px; background: #fff; color: #a5b4fc; transform: translateZ(10px); }
+        .alnilam { top: 52%; left: 50%; width: 10px; height: 10px; background: #fff; color: #a5b4fc; transform: translateZ(0px); }
+        .mintaka { top: 50%; left: 65%; width: 10px; height: 10px; background: #fff; color: #a5b4fc; transform: translateZ(-10px); }
+        
+        /* The Sword */
+        .nebula { top: 65%; left: 48%; width: 8px; height: 15px; background: rgba(192, 132, 252, 0.8); border-radius: 40%; box-shadow: 0 0 20px var(--accent-secondary); filter: blur(2px); transform: translateZ(5px); }
+
+        /* Connection Lines (SVG Overlay in 3D) */
+        .connections {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            transform: translateZ(-1px); /* Behind stars */
+        }
+        
+        .constellation-line {
+            stroke: rgba(255, 255, 255, 0.3);
+            stroke-width: 1;
+        }
+
+        .label {
+            position: absolute;
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.7);
+            white-space: nowrap;
+            transform: translateX(15px);
+        }
+
+        .nav-hint {
+            position: fixed;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            color: rgba(255,255,255,0.3);
+            font-size: 0.8rem;
+            pointer-events: none;
+            z-index: 10;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .highlight-text {
+            color: transparent;
+            background: linear-gradient(135deg, #fff, #818cf8);
+            -webkit-background-clip: text;
+        }
+
+    </style>
+</head>
+<body>
+
+    <canvas id="starfield"></canvas>
+
+    <!-- Navigation Click Zones -->
+    <div class="nav-zone nav-left" onclick="changeSlide(-1)"></div>
+    <div class="nav-zone nav-right" onclick="changeSlide(1)"></div>
+
+    <div class="nav-hint">Click Right to Next Slide &bull; Click Left to Go Back</div>
+
+    <div id="scene">
+        
+        <!-- SLIDE 0: Title -->
+        <div class="slide active" id="slide-0">
+            <div class="text-center">
+                <div class="inline-block px-4 py-1 mb-6 border border-indigo-500/30 rounded-full bg-indigo-500/10 text-indigo-300 text-sm tracking-widest uppercase">
+                    Constellation Project
+                </div>
+                <h1 class="text-7xl md:text-9xl font-bold mb-4 highlight-text tracking-tighter">ORION</h1>
+                <h2 class="text-3xl md:text-4xl text-indigo-200 mb-8 font-light tracking-wide">The Hunter</h2>
+                <p class="text-xl text-slate-400">By Jakub Wrona</p>
+            </div>
+        </div>
+
+        <!-- SLIDE 1: Research Data -->
+        <div class="slide future" id="slide-1">
+            <div class="glass-panel">
+                <div class="flex flex-col md:flex-row gap-12 items-center">
+                    <div class="flex-1 text-left">
+                        <h2 class="text-4xl heading-font font-bold mb-6 text-white">Part 1: Identity</h2>
+                        <div class="space-y-6">
+                            <div>
+                                <h3 class="text-indigo-400 text-sm uppercase tracking-wide">Constellation Name</h3>
+                                <p class="text-2xl text-white font-medium">Orion (The Hunter)</p>
+                            </div>
+                            <div>
+                                <h3 class="text-indigo-400 text-sm uppercase tracking-wide">Best Season</h3>
+                                <p class="text-2xl text-white font-medium">Winter</p>
+                                <p class="text-slate-400 text-sm">Best visible in the Northern Hemisphere from January to March.</p>
+                            </div>
+                            <div>
+                                <h3 class="text-indigo-400 text-sm uppercase tracking-wide">Location</h3>
+                                <p class="text-2xl text-white font-medium">Celestial Equator</p>
+                                <p class="text-slate-400 text-sm">This unique location makes it visible from every part of the globe.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex-1">
+                        <div class="p-6 bg-white/5 rounded-2xl border border-white/10">
+                            <h3 class="text-xl font-bold mb-4 text-center text-pink-300">Key Stars</h3>
+                            <ul class="space-y-4">
+                                <li class="flex items-center justify-between">
+                                    <span class="text-slate-300">Betelgeuse</span>
+                                    <span class="px-2 py-1 bg-red-500/20 text-red-300 text-xs rounded border border-red-500/30">Red Supergiant</span>
+                                </li>
+                                <li class="flex items-center justify-between">
+                                    <span class="text-slate-300">Rigel</span>
+                                    <span class="px-2 py-1 bg-blue-500/20 text-blue-300 text-xs rounded border border-blue-500/30">Blue Supergiant</span>
+                                </li>
+                                <li class="flex items-center justify-between">
+                                    <span class="text-slate-300">Orion's Belt</span>
+                                    <span class="text-xs text-slate-500">Alnitak, Alnilam, Mintaka</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SLIDE 2: The Myth -->
+        <div class="slide future" id="slide-2">
+            <div class="glass-panel text-left max-w-4xl">
+                <h2 class="text-4xl heading-font font-bold mb-8 text-white">The Myth of the Hunter</h2>
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div class="prose prose-invert">
+                        <p class="text-lg leading-relaxed text-slate-300">
+                            In Greek mythology, <strong class="text-indigo-300">Orion</strong> was a giant huntsman whom Zeus placed among the stars.
+                        </p>
+                        <p class="text-lg leading-relaxed text-slate-300 mt-4">
+                            One story says he was the son of Poseidon and could walk on water. He boasted he could kill any beast on Earth. In response, Gaia (Mother Earth) sent a giant Scorpion (<strong class="text-pink-300">Scorpius</strong>) to defeat him.
+                        </p>
+                    </div>
+                    <div class="bg-gradient-to-br from-indigo-900/40 to-purple-900/40 p-6 rounded-xl border border-white/10 flex flex-col justify-center">
+                        <p class="italic text-indigo-200 text-center text-xl">
+                            "This is why Orion and Scorpius are never in the sky at the same time. As one rises in the East, the other sets in the West, fleeing across the heavens."
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SLIDE 3: 3D Interactive Model -->
+        <div class="slide future" id="slide-3">
+            <div class="glass-panel">
+                <div class="flex flex-col md:flex-row items-center gap-10">
+                    <div class="flex-1 text-left">
+                        <h2 class="text-4xl heading-font font-bold mb-2 text-white">Part 2: The Model</h2>
+                        <p class="text-indigo-300 mb-6">Digital 3D Construction</p>
+                        <div class="space-y-4 text-sm text-slate-400">
+                            <p>This digital model demonstrates the spatial depth of the stars. Though they look flat from Earth, they are light-years apart in depth.</p>
+                            <ul class="list-disc list-inside text-slate-300 space-y-2">
+                                <li><span class="text-red-400">Betelgeuse</span>: Top Left shoulder</li>
+                                <li><span class="text-blue-400">Rigel</span>: Bottom Right foot</li>
+                                <li><span class="text-indigo-300">The Belt</span>: Center alignment</li>
+                                <li><span class="text-purple-400">Nebula</span>: The sword hanging below</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <!-- THE 3D MODEL -->
+                    <div class="flex-1 flex justify-center items-center">
+                        <div class="constellation-stage">
+                            <!-- SVG Lines (Flat overlay that rotates with container) -->
+                            <svg class="connections" viewBox="0 0 400 500">
+                                <!-- Shoulders to Belt -->
+                                <line x1="80" y1="100" x2="140" y2="275" class="constellation-line" /> <!-- Betelgeuse to Alnitak -->
+                                <line x1="320" y1="125" x2="260" y2="250" class="constellation-line" /> <!-- Bellatrix to Mintaka -->
+                                <!-- Belt -->
+                                <line x1="140" y1="275" x2="200" y2="260" class="constellation-line" />
+                                <line x1="200" y1="260" x2="260" y2="250" class="constellation-line" />
+                                <!-- Legs -->
+                                <line x1="140" y1="275" x2="60" y2="450" class="constellation-line" /> <!-- Alnitak to Saiph -->
+                                <line x1="260" y1="250" x2="340" y2="425" class="constellation-line" /> <!-- Mintaka to Rigel -->
+                                <!-- Sword -->
+                                <line x1="200" y1="260" x2="192" y2="325" class="constellation-line" style="stroke-opacity: 0.2" />
+                            </svg>
+
+                            <!-- Stars with Depth (Z-index) -->
+                            <div class="star-point betelgeuse"><span class="label" style="top:-20px; left:-20px">Betelgeuse</span></div>
+                            <div class="star-point bellatrix"><span class="label" style="top:-20px">Bellatrix</span></div>
+                            
+                            <div class="star-point alnitak"></div>
+                            <div class="star-point alnilam"></div>
+                            <div class="star-point mintaka"></div>
+                            
+                            <div class="star-point nebula"></div> <!-- M42 -->
+                            
+                            <div class="star-point saiph"><span class="label" style="bottom:-20px; left:-20px">Saiph</span></div>
+                            <div class="star-point rigel"><span class="label" style="bottom:-20px">Rigel</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SLIDE 4: Part 3 - Explanation & Cultural -->
+        <div class="slide future" id="slide-4">
+            <div class="glass-panel">
+                <h2 class="text-4xl heading-font font-bold mb-8 text-white">Part 3: Explanation & Culture</h2>
+                
+                <div class="grid md:grid-cols-3 gap-6 text-left">
+                    <div class="bg-slate-800/50 p-6 rounded-xl border-t-4 border-indigo-500">
+                        <h3 class="text-lg font-bold text-indigo-200 mb-3">Ancient Navigation</h3>
+                        <p class="text-slate-400 text-sm">
+                            Because Orion is located on the Celestial Equator, it was a crucial guide for sailors worldwide. It rises in the East and sets in the West, helping navigators orient themselves on the open ocean.
+                        </p>
+                    </div>
+
+                    <div class="bg-slate-800/50 p-6 rounded-xl border-t-4 border-pink-500">
+                        <h3 class="text-lg font-bold text-pink-200 mb-3">Cultural Stories</h3>
+                        <p class="text-slate-400 text-sm">
+                            <strong>Egyptians:</strong> Saw Orion as Osiris, the god of rebirth.<br><br>
+                            <strong>Navajo:</strong> Called it "Atse Ats'oosi" (The First Slender One), representing protection.
+                        </p>
+                    </div>
+
+                    <div class="bg-slate-800/50 p-6 rounded-xl border-t-4 border-blue-500">
+                        <h3 class="text-lg font-bold text-blue-200 mb-3">Earth's Movement</h3>
+                        <p class="text-slate-400 text-sm">
+                            We see Orion in winter because Earth is on the side of the Sun facing outward toward the spiral arm of the galaxy where Orion resides. In summer, the Sun blocks our view of it.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SLIDE 5: Conclusion -->
+        <div class="slide future" id="slide-5">
+            <div class="glass-panel text-center max-w-2xl">
+                <h2 class="text-5xl heading-font font-bold mb-6 highlight-text">Reflection</h2>
+                <p class="text-xl text-slate-300 mb-8 leading-relaxed">
+                    "The most interesting thing I learned is that Betelgeuse is a massive red star that could explode into a supernova at any moment. Seeing how different cultures all looked at the same stars and saw a hero or a god connects us to the past."
+                </p>
+                <div class="inline-block px-8 py-3 bg-indigo-600 rounded-full text-white font-bold shadow-lg shadow-indigo-500/50">
+                    End of Project
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- Slide Logic ---
+        let currentSlide = 0;
+        const totalSlides = 6;
+        let isTransitioning = false;
+
+        function changeSlide(direction) {
+            if (isTransitioning) return;
+            
+            const nextSlide = currentSlide + direction;
+
+            if (nextSlide >= 0 && nextSlide < totalSlides) {
+                isTransitioning = true;
+                
+                // Warp speed effect
+                warpSpeed = true;
+                setTimeout(() => { warpSpeed = false; }, 800);
+
+                updateSlides(nextSlide);
+                currentSlide = nextSlide;
+
+                setTimeout(() => { isTransitioning = false; }, 800);
+            }
+        }
+
+        function updateSlides(targetIndex) {
+            for (let i = 0; i < totalSlides; i++) {
+                const slide = document.getElementById(`slide-${i}`);
+                slide.className = 'slide'; // Reset
+
+                if (i === targetIndex) {
+                    slide.classList.add('active');
+                } else if (i < targetIndex) {
+                    slide.classList.add('past');
+                } else {
+                    slide.classList.add('future');
+                }
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight') changeSlide(1);
+            if (e.key === 'ArrowLeft') changeSlide(-1);
+        });
+
+        // --- Starfield Canvas ---
+        const canvas = document.getElementById('starfield');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        let stars = [];
+        let warpSpeed = false;
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+
+        class Star {
+            constructor() { this.reset(); }
+            reset() {
+                this.x = (Math.random() - 0.5) * width;
+                this.y = (Math.random() - 0.5) * height;
+                this.z = Math.random() * width;
+                this.pz = this.z;
+            }
+            update(speed) {
+                this.z -= speed;
+                if (this.z < 1) {
+                    this.reset();
+                    this.z = width;
+                    this.pz = this.z;
+                }
+            }
+            draw() {
+                const x = (this.x / this.z) * width + width / 2;
+                const y = (this.y / this.z) * height + height / 2;
+                const px = (this.x / this.pz) * width + width / 2;
+                const py = (this.y / this.pz) * height + height / 2;
+                this.pz = this.z;
+                ctx.beginPath();
+                ctx.moveTo(px, py);
+                ctx.lineTo(x, y);
+                ctx.strokeStyle = `rgba(255, 255, 255, ${1 - this.z / width})`;
+                ctx.lineWidth = (1 - this.z / width) * 3;
+                ctx.stroke();
+            }
+        }
+
+        for (let i = 0; i < 400; i++) stars.push(new Star());
+
+        function animate() {
+            ctx.fillStyle = 'rgba(5, 5, 8, 0.4)'; 
+            ctx.fillRect(0, 0, width, height);
+            const speed = warpSpeed ? 50 : 2;
+            stars.forEach(star => { star.update(speed); star.draw(); });
+            requestAnimationFrame(animate);
+        }
+        animate();
+    </script>
+</body>
+</html>
